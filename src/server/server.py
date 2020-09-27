@@ -54,6 +54,9 @@ class NewUserReceptionist:
         self.__broadcast_socket.close()
         self.__pairing_socket.close()
 
+        self.__thread_new_user_waiter.join()
+        self.__thread_udp_broadcast.join()
+
         # log
         print(f'SYS:{self.my_name} UDP Broadcast stopped')
         print(f'SYS:{self.my_name} Pairing stopped')
@@ -69,7 +72,12 @@ class NewUserReceptionist:
                                   self.pairing_port])  # 服务器配对端口
             try:
                 self.__broadcast_socket.sendto(pair_id.encode('utf-8'), broadcast_dest)
-                time.sleep(3)
+
+                for _ in range(6):  # 广播3秒间隔
+                    if self.__is_shutdown:
+                        return
+                    time.sleep(0.5)
+
             except OSError as e:
                 if not self.__is_shutdown:
                     raise OSError(e)
