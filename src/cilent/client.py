@@ -3,6 +3,7 @@ import time
 import threading
 import socket
 import json
+from hashlib import md5
 
 import utils_c
 from pretty_print import PrettyPrint as Pprint
@@ -29,30 +30,19 @@ class ConnServer:
 
     def __main_logic(self):
         """ 主逻辑 """
-        bar_list = ['\\', '/', '-']
-        i = 0
-
         # Get server address automatically
         thread_find_by_bc = threading.Thread(target=self.__find_by_broadcast)
         thread_find_by_bc.start()
-
+        i = 0
         while thread_find_by_bc.is_alive():
-            print(f'\rLooking for the Server {bar_list[i]}', end='')
+            print(f"\rLooking for the Server {[chr(92), '/', '-'][i]}", end='')
             time.sleep(0.15)
             i = (i + 1) % 3
         print()
 
         # Get server address manually
         if self.__server_ip is None:
-            print('No server detected automatically, please connect server manually')
-            while True:
-                addr = input('Enter the server address in IP:Port (like 10.20.71.2:12800):')
-                if utils_c.valid_ip_port(addr):
-                    addr = addr.split(':')
-                    self.__server_ip = addr[0]
-                    self.__server_pair_port = int(addr[1])
-                    break
-                print(f'{addr} is invalid address!')
+            self.__find_by_manual()
         else:
             print(f'Server found in {self.__server_ip}')
 
@@ -65,38 +55,55 @@ class ConnServer:
 
     def __find_by_broadcast(self):
         """ 通过UDP广播找到服务器 """
+        self.__pairing_socket.settimeout(8)
         try:
             while True:
-                self.__pairing_socket.settimeout(8)
-                msg, addr = self.__pairing_socket.recvfrom(1024)  # blocking
-                msg = json.loads(msg.decode('utf-8'))
+                pkg, addr = self.__pairing_socket.recvfrom(1024)  # Blocking
+                pkg = pkg.decode('UTF-8').split(';')
 
-                if msg[0] != 'AnCs' or len(msg) != 3:  # filter
+                if len(pkg) != 2 or pkg[0] != md5(pkg[1].encode('UTF-8')).hexdigest():  # Filter
                     continue
-                elif abs(int(time.time() / 5) - int(msg[1]) < 10):  # 校对密钥
+
+                msg_dict = json.loads(pkg[1])
+
+                if abs(time.time() - msg_dict['time_stamp']) < 10:  # Check Unix_timestamp
                     self.__server_ip = addr[0]
                     self.__server_broadcast_port = addr[1]
-                    self.__server_pair_port = msg[2]
+                    self.__server_pair_port = msg_dict['port']
                     break
 
         except socket.timeout:
             pass
 
+    def __find_by_manual(self):
+        print('No server detected automatically, please connect server manually')
+        while True:
+            addr = input('Enter the server address in IP:Port (like 10.20.71.2:12800):')
+            if utils_c.valid_ip_port(addr):
+                addr = addr.split(':')
+                self.__server_ip = addr[0]
+                self.__server_pair_port = int(addr[1])
+                break
+            print(f'{addr} is invalid address!')
+
     def __conn_server(self):
         """ 连接服务器 """
         self.__pairing_socket.settimeout(2)
 
-        response_to_server = json.dumps({'head': 'AnCl',
-                                         'v_code': int(time.time() / 5),
-                                         'py_version': sys.version,
-                                         'sys_platform': sys.platform})
+        response_to_server = json.dumps(
+            {'time_stamp': time.time(),
+             'py_version': sys.version,
+             'sys_platform': sys.platform}
+        )
 
-        self.__pairing_socket.sendto(response_to_server.encode('utf-8'), self.__server_pair_addr)  # 发送连接请求
+        response_to_server = ';'.join([md5(response_to_server.encode('UTF-8')).hexdigest(), response_to_server])
+
+        self.__pairing_socket.sendto(response_to_server.encode('UTF-8'), self.__server_pair_addr)  # 发送连接请求
 
         try:
-            i = addr = msg = 0
+            i = addr = pkg = 0
             while addr != self.__server_pair_addr and i < 3:
-                msg, addr = self.__pairing_socket.recvfrom(1024)
+                pkg, addr = self.__pairing_socket.recvfrom(1024)
                 if addr[1] == self.__server_broadcast_port:
                     continue
                 i += 1
@@ -107,9 +114,15 @@ class ConnServer:
         if i >= 3:
             return False
 
-        msg = json.loads(msg.decode('utf-8'))
-        self.__server_long_conn_port = msg['msg_port']
-        self.__meg_from_server = msg['message']
+        pkg = pkg.decode('UTF-8').split(';')
+
+        if len(pkg) != 2 or pkg[0] != md5(pkg[1].encode('UTF-8')).hexdigest():
+            return False
+
+        msg_dict = json.loads(pkg[1])
+
+        self.__server_long_conn_port = msg_dict['port']
+        self.__meg_from_server = msg_dict['message']
 
         return True
 

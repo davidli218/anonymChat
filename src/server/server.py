@@ -2,6 +2,7 @@ import time
 import threading
 import socket
 import json
+from hashlib import md5
 
 import utils_s
 from pretty_print import PrettyPrint as Pprint
@@ -67,11 +68,14 @@ class NewUserReceptionist:
         broadcast_dest = (socket.gethostbyname(socket.gethostname()).rsplit('.', 1)[:-1][0] + '.255',
                           self.broadcast_dest_port)
         while True:
-            pair_id = json.dumps(['AnCs',  # 标识头
-                                  int(time.time() / 5),  # 配对码
-                                  self.pairing_port])  # 服务器配对端口
+            msg_dict = json.dumps(
+                {'time_stamp': time.time(),  # Unix_timestamp
+                 'port': self.pairing_port}  # 服务器配对端口
+            )
+            bc_pkg = ';'.join([md5(msg_dict.encode('UTF-8')).hexdigest(), msg_dict])
+
             try:
-                self.__broadcast_socket.sendto(pair_id.encode('utf-8'), broadcast_dest)
+                self.__broadcast_socket.sendto(bc_pkg.encode('UTF-8'), broadcast_dest)
 
                 for _ in range(6):  # 广播3秒间隔
                     if self.__is_shutdown:
@@ -87,27 +91,30 @@ class NewUserReceptionist:
         """ 接待新用户 """
         while True:
             try:
-                msg, addr = self.__pairing_socket.recvfrom(1024)  # 等待用户连接
+                pkg, addr = self.__pairing_socket.recvfrom(1024)  # 等待用户连接
+                pkg = pkg.decode('UTF-8').split(';')
+
             except OSError as e:
                 if not self.__is_shutdown:
                     raise OSError(e)
                 return
 
-            try:
-                msg = json.loads(msg.decode('utf-8'))
-                if msg['head'] != 'AnCl' or len(msg) != 4:
-                    continue
-            except json.decoder.JSONDecodeError:
+            if len(pkg) != 2 or pkg[0] != md5(pkg[1].encode('UTF-8')).hexdigest():
                 continue
 
-            if abs(time.time() / 5 - int(msg['v_code'])) < 10:
+            msg_dict = json.loads(pkg[1])
+
+            if abs(time.time() - msg_dict['time_stamp']) < 10:
                 Pprint(f'{addr} Joined the server successfully!'
-                       f'\tOS:{msg["sys_platform"]}\tPython:{msg["py_version"].split()[0]}', 'green')
+                       f'\tOS:{msg_dict["sys_platform"]}\tPython:{msg_dict["py_version"].split()[0]}', 'green')
 
-                response = json.dumps({'message': 'Welcome',
-                                       'msg_port': -1})  # TODO: send long connection port to client
+                response = json.dumps(
+                    {'message': 'Welcome',
+                     'port': -1}  # TODO: send long connection port to client
+                )
+                response = ';'.join([md5(response.encode('UTF-8')).hexdigest(), response])
 
-                self.__pairing_socket.sendto(response.encode('utf-8'), addr)
+                self.__pairing_socket.sendto(response.encode('UTF-8'), addr)
 
 
 def server_start_ui():
