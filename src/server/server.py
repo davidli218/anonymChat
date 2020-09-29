@@ -7,29 +7,35 @@ from hashlib import md5
 import utils_s
 from pretty_print import PrettyPrint as Pprint
 
-
 # NOTICE########################################
 # 2020.09.27 01:15 <David Li>                  #
 #     Server can only run in windows now...    #
 ################################################
 
+G_BROADCAST_PORT = 12000  # <服务器> 广播配对信息 </端口>
+G_PAIRING_PORT = 12165  # <服务器> 接受连接请求 </端口>
+G_CLIENT_PAIRING_PORT = 10080  # <客户端> 发现并连接服务器 </端口>
+G_MASSAGE_PORT = 20218  # <服务器> 稳定通讯 </端口>
+
+
 class NewUserReceptionist:
+    """ 广播服务器信息，处理客户端连接请求 """
     __is_shutdown = False
 
-    def __init__(self, bc_port=12000, pr_port=12165, dest_port=10080):
+    def __init__(self):
         self.my_name = f'[{self.__class__.__name__} at {id(self)}]'
-        self.broadcast_port = bc_port
-        self.broadcast_dest_port = dest_port
-        self.pairing_port = pr_port
+        self.broadcast_port = G_BROADCAST_PORT
+        self.broadcast_dest_port = G_CLIENT_PAIRING_PORT
+        self.pairing_port = G_PAIRING_PORT
 
         # init sockets -> broadcast
         self.__broadcast_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__broadcast_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        self.__broadcast_socket.bind(('', bc_port))
+        self.__broadcast_socket.bind(('', self.broadcast_port))
 
         # init sockets -> pairing
         self.__pairing_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.__pairing_socket.bind(('', pr_port))
+        self.__pairing_socket.bind(('', self.pairing_port))
 
         # init threading
         self.__thread_udp_broadcast = threading.Thread(target=self.__udp_broadcast)
@@ -37,8 +43,8 @@ class NewUserReceptionist:
 
         # log
         print(f'SYS:{self.my_name} Has been created successfully')
-        print(f'SYS:{self.my_name} Broadcast using port: {bc_port}')
-        print(f'SYS:{self.my_name} Pairing using port: {pr_port}')
+        print(f'SYS:{self.my_name} Broadcast using port: {self.broadcast_port}')
+        print(f'SYS:{self.my_name} Pairing using port: {self.pairing_port}')
 
     def start(self):
         self.__thread_udp_broadcast.start()
@@ -64,7 +70,7 @@ class NewUserReceptionist:
         Pprint(f'SYS:{self.my_name} Is closed', 'yellow')
 
     def __udp_broadcast(self):
-        """ UDP广播 用于客户端发现 """
+        """ UDP Broadcast 用于被客户端发现 """
         broadcast_dest = (socket.gethostbyname(socket.gethostname()).rsplit('.', 1)[:-1][0] + '.255',
                           self.broadcast_dest_port)
         while True:
@@ -88,7 +94,7 @@ class NewUserReceptionist:
                 return
 
     def __new_user_waiter(self):
-        """ 接待新用户 """
+        """ Deal with new client connection request """
         while True:
             try:
                 pkg, addr = self.__pairing_socket.recvfrom(1024)  # 等待用户连接
@@ -134,6 +140,7 @@ def server_close():
 
 
 if __name__ == "__main__":
+    """ Starting point """
     server_start_ui()
 
     """ Server Logic """
