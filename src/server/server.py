@@ -1,3 +1,4 @@
+import sys
 import time
 import threading
 import socket
@@ -6,11 +7,6 @@ from hashlib import md5
 
 import utils_s
 from pretty_print import PrettyPrint as Pprint
-
-# NOTICE########################################
-# 2020.09.27 01:15 <David Li>                  #
-#     Server can only run in windows now...    #
-################################################
 
 G_BROADCAST_PORT = 12000  # <服务器> 广播配对信息 </端口>
 G_PAIRING_PORT = 12165  # <服务器> 接受连接请求 </端口>
@@ -27,6 +23,7 @@ class NewUserReceptionist:
         self.broadcast_port = G_BROADCAST_PORT
         self.broadcast_dest_port = G_CLIENT_PAIRING_PORT
         self.pairing_port = G_PAIRING_PORT
+        self.message_port = G_MASSAGE_PORT
 
         # init sockets -> broadcast
         self.__broadcast_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -56,8 +53,23 @@ class NewUserReceptionist:
 
     def close(self):
         self.__is_shutdown = True
-        self.__broadcast_socket.shutdown(socket.SHUT_RDWR)
-        self.__pairing_socket.shutdown(socket.SHUT_RDWR)
+
+        if sys.platform == 'darwin':
+            """
+            Linux and Windows are very forgiving about calling shutdown() on a closed socket.
+            But on Mac OS X shutdown() only succeeds if the OS thinks that the socket is still open,
+            otherwise OS X kills the socket.shutdown() statement with:
+                socket.error: [Errno 57] Socket is not connected
+            """
+            try:
+                self.__broadcast_socket.shutdown(socket.SHUT_RDWR)
+                self.__pairing_socket.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+        else:
+            self.__broadcast_socket.shutdown(socket.SHUT_RDWR)
+            self.__pairing_socket.shutdown(socket.SHUT_RDWR)
+
         self.__broadcast_socket.close()
         self.__pairing_socket.close()
 
@@ -116,7 +128,7 @@ class NewUserReceptionist:
 
                 response = json.dumps(
                     {'message': 'Welcome',
-                     'port': -1}  # TODO: send long connection port to client
+                     'port': self.message_port}
                 )
                 response = ';'.join([md5(response.encode('UTF-8')).hexdigest(), response])
 
