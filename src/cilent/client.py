@@ -8,6 +8,15 @@ from hashlib import md5
 import utils_c
 from pretty_print import PrettyPrint as Pprint
 
+G_PAIRING_PORT = 10080  # <客户端> 连接服务器 </端口>
+G_SERVER_MASSAGE_ADDR = None  # <服务器> 送信 </端口>
+
+
+def client_init():
+    """ Client initialization """
+    utils_c.clear_screen()
+    Pprint(utils_c.ascii_art_title, 'yellow')
+
 
 class ConnServer:
     __server_ip = None
@@ -19,7 +28,7 @@ class ConnServer:
 
     def __init__(self):
         self.__pairing_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.__pairing_socket.bind(('', 10080))  # Server UDP broadcast port
+        self.__pairing_socket.bind(('', G_PAIRING_PORT))  # Server UDP broadcast port
 
         self.__main_logic()
 
@@ -27,6 +36,9 @@ class ConnServer:
 
         if self.__server_long_conn_port is None:
             sys.exit()
+        else:
+            global G_SERVER_MASSAGE_ADDR
+            G_SERVER_MASSAGE_ADDR = self.__server_msg_addr
 
     def __main_logic(self):
         """ 主逻辑 """
@@ -131,20 +143,15 @@ class ConnServer:
         return self.__server_ip, self.__server_pair_port
 
     @property
-    def server_long_conn_addr(self):
+    def __server_msg_addr(self):
         return self.__server_ip, self.__server_long_conn_port
 
 
-def client_start_ui():
-    utils_c.clear_screen()
-    Pprint(utils_c.ascii_art_title, 'yellow')
-
-
 if __name__ == "__main__":
-    client_start_ui()
+    # 初始化客户端
+    client_init()
 
-    long_conn_addr = ConnServer().server_long_conn_addr
+    # 获取服务器通信端口
+    ConnServer()
 
-    print(long_conn_addr)
-
-    ...
+    print(G_SERVER_MASSAGE_ADDR)
