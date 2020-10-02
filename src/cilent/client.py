@@ -9,7 +9,9 @@ import utils_c
 from pretty_print import PrettyPrint as Pprint
 
 G_PAIRING_PORT = 10080  # <客户端> 连接服务器 </端口>
-G_SERVER_MASSAGE_ADDR = None  # <服务器> 送信 </端口>
+G_MASSAGE_IN_PORT = 22218  # <客户端> 收信 </端口>
+G_MASSAGE_OUT_PORT = 22218  # <客户端> 送信 </端口>
+G_SERVER_MASSAGE_ADDR = None  # <服务器> 送信 </地址>
 
 
 def client_init():
@@ -27,6 +29,8 @@ class ConnServer:
     __meg_from_server = None
 
     def __init__(self):
+        self.__nickname = self.__input_nickname()
+
         self.__pairing_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__pairing_socket.bind(('', G_PAIRING_PORT))  # Server UDP broadcast port
 
@@ -104,6 +108,7 @@ class ConnServer:
 
         response_to_server = json.dumps(
             {'time_stamp': time.time(),
+             'name': self.__nickname,
              'py_version': sys.version,
              'sys_platform': sys.platform}
         )
@@ -138,6 +143,14 @@ class ConnServer:
 
         return True
 
+    @staticmethod
+    def __input_nickname():
+        while True:
+            name = input('Please give yourself a nickname(Up to 12 characters):')
+            if len(name) < 13:
+                return name
+            print('Invalid nickname, please change new one')
+
     @property
     def __server_pair_addr(self):
         return self.__server_ip, self.__server_pair_port
@@ -147,6 +160,16 @@ class ConnServer:
         return self.__server_ip, self.__server_long_conn_port
 
 
+class Communication:
+    def __init__(self):
+        self.comm_port = G_SERVER_MASSAGE_ADDR
+
+        sk = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sk.bind(('', G_MASSAGE_OUT_PORT))
+
+        ...
+
+
 if __name__ == "__main__":
     # 初始化客户端
     client_init()
@@ -154,4 +177,5 @@ if __name__ == "__main__":
     # 获取服务器通信端口
     ConnServer()
 
-    print(G_SERVER_MASSAGE_ADDR)
+    # 与服务器通信
+    # Communication()
