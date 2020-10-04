@@ -4,13 +4,14 @@ import threading
 import socket
 import json
 from hashlib import md5
+from typing import List
 
 import utils_c
 from pretty_print import PrettyPrint as Pprint
 
 G_PAIRING_PORT = 10080  # <客户端> 连接服务器 </端口>
-G_MASSAGE_IN_PORT = 22218  # <客户端> 收信 </端口>
-G_MASSAGE_OUT_PORT = 22218  # <客户端> 送信 </端口>
+G_MASSAGE_RECV_PORT = 22218  # <客户端> 收信 </端口>
+G_MASSAGE_SEND_PORT = 30141  # <客户端> 送信 </端口>
 G_SERVER_MASSAGE_ADDR = None  # <服务器> 送信 </地址>
 
 
@@ -102,13 +103,14 @@ class ConnServer:
                 break
             print(f'{addr} is invalid address!')
 
-    def __conn_server(self):
+    def __conn_server(self) -> bool:
         """ 连接服务器 """
         self.__pairing_socket.settimeout(2)
 
         response_to_server = json.dumps(
             {'time_stamp': time.time(),
              'name': self.__nickname,
+             'port': G_MASSAGE_RECV_PORT,
              'py_version': sys.version,
              'sys_platform': sys.platform}
         )
@@ -144,7 +146,7 @@ class ConnServer:
         return True
 
     @staticmethod
-    def __input_nickname():
+    def __input_nickname() -> str:
         while True:
             name = input('Please give yourself a nickname(Up to 12 characters):')
             if len(name) < 13:
@@ -152,21 +154,83 @@ class ConnServer:
             print('Invalid nickname, please change new one')
 
     @property
-    def __server_pair_addr(self):
+    def __server_pair_addr(self) -> tuple:
         return self.__server_ip, self.__server_pair_port
 
     @property
-    def __server_msg_addr(self):
+    def __server_msg_addr(self) -> tuple:
         return self.__server_ip, self.__server_long_conn_port
 
 
 class Communication:
     def __init__(self):
-        self.comm_port = G_SERVER_MASSAGE_ADDR
+        self.dest_port = G_SERVER_MASSAGE_ADDR
 
-        sk = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sk.bind(('', G_MASSAGE_OUT_PORT))
+        sk4send = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sk4send.bind(('', G_MASSAGE_SEND_PORT))
+        sk4recv = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sk4recv.bind(('', G_MASSAGE_RECV_PORT))
 
+        ...
+
+
+class Main:
+    class __Cmd:
+        def __init__(self, name: List[str], target, has_arg: bool, doc: str):
+            self.name = name  # 名称
+            self.target = target  # 调用目标
+            self.has_arg = has_arg  # 是否需要参数
+            self.doc = doc  # 功能描述
+
+    __exit_flag = False
+
+    def __init__(self):
+        self.__CMD_SHEET = (
+            self.__Cmd(['show'], self.__show, True, '显示状态/信息'),
+            self.__Cmd(['help', 'man'], self.__guide, False, '查看帮助页面'),
+            self.__Cmd(['exit', 'quit'], self.__exit, False, '退出AnonymChat'),
+        )
+
+        while not self.__exit_flag:
+            Pprint('anonymChat> ', color='green', end='')
+            cmd = input()
+            self.__parse_cmd(cmd)
+
+    def __parse_cmd(self, cmd: str):
+        """ 解析用户输入 """
+        cmd_list = cmd.split()
+
+        if len(cmd_list) == 0:
+            return
+
+        for cmd in self.__CMD_SHEET:
+            if cmd_list[0] in cmd.name:
+                if cmd.has_arg:
+                    if cmd_list == 1:
+                        print(f"{cmd_list[0]}: Need at least one parameters")
+                        cmd.target(['-h'])
+                    else:
+                        cmd.target(cmd_list[1:])
+                else:
+                    if (len(cmd_list) != 1 and cmd_list[1] not in ['-h', '--help']) or len(cmd_list) > 2:
+                        print(f'Worming: cmd_list[0] does not need parameters')
+                    cmd.target()
+                return
+        print(f"{cmd_list[0]}: command is not exist")
+
+    def __guide(self):
+        print('Help:\n查看详细用法请输入 [option] [-h, --help]\n')
+        print(f"{'Command':24}{'Need Arg':12}{'Description'}")
+        for cmd in self.__CMD_SHEET:
+            print(f'{str(cmd.name):24}{str(cmd.has_arg):12}{cmd.doc}')
+        print()
+
+    def __exit(self):
+        """ 退出AnonymChat """
+        self.__exit_flag = True
+
+    def __show(self):
+        """ 显示信息 """
         ...
 
 
@@ -177,5 +241,5 @@ if __name__ == "__main__":
     # 获取服务器通信端口
     ConnServer()
 
-    # 与服务器通信
-    # Communication()
+    # CLI
+    Main()
