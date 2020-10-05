@@ -186,52 +186,101 @@ class Main:
 
     def __init__(self):
         self.__CMD_SHEET = (
-            self.__Cmd(['show'], self.__show, True, '显示状态/信息'),
             self.__Cmd(['help', 'man'], self.__guide, False, '查看帮助页面'),
             self.__Cmd(['exit', 'quit'], self.__exit, False, '退出AnonymChat'),
+            self.__Cmd([], None, False, ''),
         )
 
         while not self.__exit_flag:
             Pprint('anonymChat> ', color='green', end='')
-            cmd = input()
-            self.__parse_cmd(cmd)
+            self.__input_parser(input())
 
-    def __parse_cmd(self, cmd: str):
-        """ 解析用户输入 """
-        cmd_list = cmd.split()
-
-        if len(cmd_list) == 0:
+    def __input_parser(self, user_input: str):
+        """ User input parser """
+        if len(user_input) == 0:  # 处理空白输入
             return
 
+        cmd_name = user_input.split()[0]
+        cmd_para = user_input.split()[1:]
+
+        cmd = None
         for cmd in self.__CMD_SHEET:
-            if cmd_list[0] in cmd.name:
-                if cmd.has_arg:
-                    if cmd_list == 1:
-                        print(f"{cmd_list[0]}: Need at least one parameters")
-                        cmd.target(['-h'])
-                    else:
-                        cmd.target(cmd_list[1:])
+            if cmd_name.lower() in cmd.name:
+                break
+
+        if not cmd.name:
+            print(f"{cmd_name}: command is not exist")
+
+        elif cmd.has_arg and len(cmd_para):
+            print(f"{cmd_name}: Need at least one parameters")
+            print(f"input '{cmd_name} -h' to find the usage")
+
+        elif not cmd.has_arg and (len(cmd_para) > 1 or (len(cmd_para) and cmd_para[0] not in ['-h', '--help'])):
+            print(f'{cmd_name} does not need parameters')
+            print(f"input '{cmd_name} -h' to find the usage")
+
+        else:
+            cmd.target(cmd_para)
+
+    def __guide(self, args: list):
+        """ AnonymChat Help Page """
+        if not args:
+            print('Help:\nFind the detailed usage by [option] [-h, --help]\n')
+            print(f"{'Command':24}{'Need Arg':12}{'Description'}")
+            for cmd in self.__CMD_SHEET[:-1]:
+                print(f"{str(cmd.name).replace(chr(39), ''):24}{str(cmd.has_arg):12}{cmd.doc}")
+            print()
+
+        elif len(args) == 1 and args[0] in ['-h', '--help']:
+            print("""
+Name:
+
+    AnonymChat Help Page
+   
+Description:
+   
+    Displays commands and their brief introduction of AnonymChat
+   
+Parameters:
+   
+    None
+            """)
+
+        else:
+            print(f"parameters:{str(args).replace(chr(39), '')} is not available")
+            print('Find the detailed usage by parameter [-h, --help]')
+
+    def __exit(self, args: list):
+        """ Exit AnonymChat """
+        if not args:
+            while True:
+                choice = input('Do you want to quit AnonymChat(Y/N): ').upper()
+                if choice == 'Y':
+                    self.__exit_flag = True
+                    return
+                elif choice == 'N':
+                    return
                 else:
-                    if (len(cmd_list) != 1 and cmd_list[1] not in ['-h', '--help']) or len(cmd_list) > 2:
-                        print(f'Worming: cmd_list[0] does not need parameters')
-                    cmd.target()
-                return
-        print(f"{cmd_list[0]}: command is not exist")
+                    print("Invalid input, only 'Y' and 'N' is available)")
 
-    def __guide(self):
-        print('Help:\n查看详细用法请输入 [option] [-h, --help]\n')
-        print(f"{'Command':24}{'Need Arg':12}{'Description'}")
-        for cmd in self.__CMD_SHEET:
-            print(f'{str(cmd.name):24}{str(cmd.has_arg):12}{cmd.doc}')
-        print()
+        elif len(args) == 1 and args[0] in ['-h', '--help']:
+            print("""
+Name:
 
-    def __exit(self):
-        """ 退出AnonymChat """
-        self.__exit_flag = True
+    Exit AnonymChat
+   
+Description:
+   
+    Quit AnonymChat
+   
+Parameters:
+   
+    None
+            """)
 
-    def __show(self):
-        """ 显示信息 """
-        ...
+        else:
+            print(f"parameters:{str(args).replace(chr(39), '')} is not available")
+            print('Find the detailed usage by parameter [-h, --help]')
 
 
 if __name__ == "__main__":
