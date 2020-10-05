@@ -7,6 +7,7 @@ from hashlib import md5
 from typing import List
 
 import utils_c
+import help_doc
 from pretty_print import PrettyPrint as Pprint
 
 G_PAIRING_PORT = 10080  # <客户端> 连接服务器 </端口>
@@ -232,19 +233,7 @@ class Main:
             print()
 
         elif len(args) == 1 and args[0] in ['-h', '--help']:
-            print("""
-Name:
-
-    AnonymChat Help Page
-   
-Description:
-   
-    Displays commands and their brief introduction of AnonymChat
-   
-Parameters:
-   
-    None
-            """)
+            print(help_doc.guide_help_doc)
 
         else:
             print(f"parameters:{str(args).replace(chr(39), '')} is not available")
@@ -264,19 +253,7 @@ Parameters:
                     print("Invalid input, only 'Y' and 'N' is available)")
 
         elif len(args) == 1 and args[0] in ['-h', '--help']:
-            print("""
-Name:
-
-    Exit AnonymChat
-   
-Description:
-   
-    Quit AnonymChat
-   
-Parameters:
-   
-    None
-            """)
+            print(help_doc.exit_help_doc)
 
         else:
             print(f"parameters:{str(args).replace(chr(39), '')} is not available")
