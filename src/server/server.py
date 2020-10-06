@@ -13,6 +13,8 @@ G_PAIRING_PORT = 12165  # <服务器> 接受连接请求 </端口>
 G_CLIENT_PAIRING_PORT = 10080  # <客户端> 发现并连接服务器 </端口>
 G_MASSAGE_PORT = 20218  # <服务器> 稳定通讯 </端口>
 
+G_ONLINE_USER = {}
+
 
 class NewUserReceptionist:
     """ 广播服务器信息，处理客户端连接请求 """
@@ -20,19 +22,19 @@ class NewUserReceptionist:
 
     def __init__(self):
         self.my_name = f'[{self.__class__.__name__} at {id(self)}]'
-        self.broadcast_port = G_BROADCAST_PORT
-        self.broadcast_dest_port = G_CLIENT_PAIRING_PORT
-        self.pairing_port = G_PAIRING_PORT
-        self.message_port = G_MASSAGE_PORT
+        self.__broadcast_port = G_BROADCAST_PORT
+        self.__broadcast_dest_port = G_CLIENT_PAIRING_PORT
+        self.__pairing_port = G_PAIRING_PORT
+        self.__message_port = G_MASSAGE_PORT
 
         # init sockets -> broadcast
         self.__broadcast_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.__broadcast_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        self.__broadcast_socket.bind(('', self.broadcast_port))
+        self.__broadcast_socket.bind(('', self.__broadcast_port))
 
         # init sockets -> pairing
         self.__pairing_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.__pairing_socket.bind(('', self.pairing_port))
+        self.__pairing_socket.bind(('', self.__pairing_port))
 
         # init threading
         self.__thread_udp_broadcast = threading.Thread(target=self.__udp_broadcast)
@@ -40,8 +42,8 @@ class NewUserReceptionist:
 
         # log
         print(f'SYS:{self.my_name} Has been created successfully')
-        print(f'SYS:{self.my_name} Broadcast using port: {self.broadcast_port}')
-        print(f'SYS:{self.my_name} Pairing using port: {self.pairing_port}')
+        print(f'SYS:{self.my_name} Broadcast using port: {self.__broadcast_port}')
+        print(f'SYS:{self.my_name} Pairing using port: {self.__pairing_port}')
 
     def start(self):
         self.__thread_udp_broadcast.start()
@@ -84,11 +86,11 @@ class NewUserReceptionist:
     def __udp_broadcast(self):
         """ UDP Broadcast 用于被客户端发现 """
         broadcast_dest = (socket.gethostbyname(socket.gethostname()).rsplit('.', 1)[:-1][0] + '.255',
-                          self.broadcast_dest_port)
+                          self.__broadcast_dest_port)
         while True:
             msg_dict = json.dumps(
                 {'time_stamp': time.time(),  # Unix_timestamp
-                 'port': self.pairing_port}  # 服务器配对端口
+                 'port': self.__pairing_port}  # 服务器配对端口
             )
             bc_pkg = ';'.join([md5(msg_dict.encode('UTF-8')).hexdigest(), msg_dict])
 
@@ -123,16 +125,23 @@ class NewUserReceptionist:
             msg_dict = json.loads(pkg[1])
 
             if abs(time.time() - msg_dict['time_stamp']) < 10:
-                Pprint(f'{addr} Joined the server successfully!'
-                       f'\tOS:{msg_dict["sys_platform"]}\tPython:{msg_dict["py_version"].split()[0]}', 'green')
-
                 response = json.dumps(
                     {'message': 'Welcome',
-                     'port': self.message_port}
+                     'port': self.__message_port}
                 )
                 response = ';'.join([md5(response.encode('UTF-8')).hexdigest(), response])
 
                 self.__pairing_socket.sendto(response.encode('UTF-8'), addr)
+
+                G_ONLINE_USER[f'{addr[0]}:{addr[1]}'] = User(msg_dict['name'])
+
+                Pprint(f'{addr} Joined the server successfully!'
+                       f'\tOS:{msg_dict["sys_platform"]}\tPython:{msg_dict["py_version"].split()[0]}', 'green')
+
+
+class User:
+    def __init__(self, name):
+        self.name = name
 
 
 def server_start_ui():
@@ -141,7 +150,7 @@ def server_start_ui():
     Pprint(utils_s.ascii_art_title, 'green')
     Pprint(f'Host name:{socket.gethostname()}\t'
            f'Host IP:{socket.gethostbyname(socket.gethostname())}\t'
-           f'Pairing by port: 12165', 'cyan')
+           f'Pairing by port: {G_PAIRING_PORT}', 'cyan')
     print()
 
 
