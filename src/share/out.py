@@ -1,4 +1,4 @@
-class PrettyPrint:
+class ColoredPrint:
     __color_dict = {'black': 30,
                     'red': 31,
                     'green': 32,
@@ -13,7 +13,7 @@ class PrettyPrint:
         if color is None:
             print(text, end=end)
         elif color not in self.__color_dict:
-            PrettyPrint(f'Warning: color:{color} is not valid', 'yellow')
+            ColoredPrint(f'Warning: color:{color} is not valid', 'yellow')
             print(text, end=end)
         else:
             print(f"\033[{self.__color_dict[color]}m{text}\033[0m", end=end)

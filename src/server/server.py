@@ -5,8 +5,8 @@ import socket
 import json
 from hashlib import md5
 
-import utils_s
-from pretty_print import PrettyPrint as Pprint
+import utils
+from utils.out import ColoredPrint
 
 G_BROADCAST_PORT = 12000  # <服务器> 广播配对信息 </端口>
 G_PAIRING_PORT = 12165  # <服务器> 接受连接请求 </端口>
@@ -81,7 +81,7 @@ class NewUserReceptionist:
         # log
         print(f'SYS:{self.my_name} UDP Broadcast stopped')
         print(f'SYS:{self.my_name} Pairing stopped')
-        Pprint(f'SYS:{self.my_name} Is closed', 'yellow')
+        ColoredPrint(f'SYS:{self.my_name} Is closed', 'yellow')
 
     def __udp_broadcast(self):
         """ UDP Broadcast 用于被客户端发现 """
@@ -126,8 +126,8 @@ class NewUserReceptionist:
 
                 G_ONLINE_USER[f"{addr[0]}:{msg_dict['port']}"] = User(msg_dict['name'])
 
-                Pprint(f'{addr[0]} Joined the server successfully!'
-                       f'\tOS:{msg_dict["sys_platform"]}\tPython:{msg_dict["py_version"].split()[0]}', 'green')
+                ColoredPrint(f'{addr[0]} Joined the server successfully!'
+                             f'\tOS:{msg_dict["sys_platform"]}\tPython:{msg_dict["py_version"].split()[0]}', 'green')
 
     @staticmethod
     def __packager(content: dict) -> bytes:
@@ -163,27 +163,24 @@ class User:
 
 def server_start_ui():
     """ Starting Interface """
-    utils_s.clear_screen()
-    Pprint(utils_s.ascii_art_title, 'green')
-    Pprint(f'Host name:{socket.gethostname()}\t'
-           f'Host IP:{socket.gethostbyname(socket.gethostname())}\t'
-           f'Pairing by port: {G_PAIRING_PORT}', 'cyan')
+    utils.system.clear_screen()
+    ColoredPrint(utils.art.ascii_art_title_4server, 'green')
+    ColoredPrint(f'Host name:{socket.gethostname()}\t'
+                 f'Host IP:{socket.gethostbyname(socket.gethostname())}\t'
+                 f'Pairing by port: {G_PAIRING_PORT}', 'cyan')
     print()
 
 
-def server_close():
-    """ Shutdown server """
-    Pprint('=' * 32 + 'Server is doing shutdown' + '=' * 32, 'red')
-    new_gay_waiter.close()
-
-
-if __name__ == "__main__":
-    """ Starting point """
+def execute():
+    # Starting point
     server_start_ui()
 
-    """ Server Logic """
+    # Server Logic
     new_gay_waiter = NewUserReceptionist()
     new_gay_waiter.start()
 
     input()  # Purse
-    server_close()
+
+    # Shutdown server
+    ColoredPrint('=' * 32 + 'Server is doing shutdown' + '=' * 32, 'red')
+    new_gay_waiter.close()
