@@ -1,3 +1,5 @@
+__all__ = ('ascii_art_title_4client', 'ascii_art_title_4server')
+
 ascii_art_title_4client = r"""
                                                                   /$$$$$$  /$$                   /$$    
                                                                  /$$__  $$| $$                  | $$    
