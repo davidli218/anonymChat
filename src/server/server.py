@@ -5,8 +5,8 @@ import socket
 import json
 from hashlib import md5
 
-import utils_s
-from pretty_print import PrettyPrint as Pprint
+import utils
+from utils.out import ColoredPrint
 
 G_BROADCAST_PORT = 12000  # <服务器> 广播配对信息 </端口>
 G_PAIRING_PORT = 12165  # <服务器> 接受连接请求 </端口>
@@ -81,62 +81,79 @@ class NewUserReceptionist:
         # log
         print(f'SYS:{self.my_name} UDP Broadcast stopped')
         print(f'SYS:{self.my_name} Pairing stopped')
-        Pprint(f'SYS:{self.my_name} Is closed', 'yellow')
+        ColoredPrint(f'SYS:{self.my_name} Is closed', 'yellow')
 
     def __udp_broadcast(self):
         """ UDP Broadcast 用于被客户端发现 """
-        broadcast_dest = (socket.gethostbyname(socket.gethostname()).rsplit('.', 1)[:-1][0] + '.255',
+        broadcast_dest = (socket.gethostbyname(socket.gethostname()).rsplit('.', 1)[0] + '.255',
                           self.__broadcast_dest_port)
         while True:
-            msg_dict = json.dumps(
-                {'time_stamp': time.time(),  # Unix_timestamp
-                 'port': self.__pairing_port}  # 服务器配对端口
-            )
-            bc_pkg = ';'.join([md5(msg_dict.encode('UTF-8')).hexdigest(), msg_dict])
+            msg_dict = {'time_stamp': time.time(),  # Unix_timestamp
+                        'port': self.__pairing_port}  # 服务器配对端口
 
             try:
-                self.__broadcast_socket.sendto(bc_pkg.encode('UTF-8'), broadcast_dest)
+                self.__broadcast_socket.sendto(self.__packager(msg_dict), broadcast_dest)
 
                 for _ in range(6):  # 广播3秒间隔
                     if self.__is_shutdown:
                         return
                     time.sleep(0.5)
-
             except OSError as e:
                 if not self.__is_shutdown:
                     raise OSError(e)
-                return
 
     def __new_user_waiter(self):
         """ Deal with new client connection request """
         while True:
+            welcome_message = f'Welcome! There are {len(G_ONLINE_USER)} online now.'
+            pkg: bytes = bytes()
+            addr: tuple = ()
+
             try:
                 pkg, addr = self.__pairing_socket.recvfrom(1024)  # 等待用户连接
-                pkg = pkg.decode('UTF-8').split(';')
-
             except OSError as e:
                 if not self.__is_shutdown:
                     raise OSError(e)
-                return
 
-            if len(pkg) != 2 or pkg[0] != md5(pkg[1].encode('UTF-8')).hexdigest():
+            if not (msg_dict := self.__unpacker(pkg)):
                 continue
 
-            msg_dict = json.loads(pkg[1])
-
             if abs(time.time() - msg_dict['time_stamp']) < 10:
-                response = json.dumps(
-                    {'message': 'Welcome',
-                     'port': self.__message_port}
-                )
-                response = ';'.join([md5(response.encode('UTF-8')).hexdigest(), response])
+                response = {'message': welcome_message,
+                            'port': self.__message_port}
 
-                self.__pairing_socket.sendto(response.encode('UTF-8'), addr)
+                self.__pairing_socket.sendto(self.__packager(response), addr)
 
-                G_ONLINE_USER[f'{addr[0]}:{addr[1]}'] = User(msg_dict['name'])
+                G_ONLINE_USER[f"{addr[0]}:{msg_dict['port']}"] = User(msg_dict['name'])
 
-                Pprint(f'{addr} Joined the server successfully!'
-                       f'\tOS:{msg_dict["sys_platform"]}\tPython:{msg_dict["py_version"].split()[0]}', 'green')
+                ColoredPrint(f'{addr[0]} Joined the server successfully!'
+                             f'\tOS:{msg_dict["sys_platform"]}\tPython:{msg_dict["py_version"].split()[0]}', 'green')
+
+    @staticmethod
+    def __packager(content: dict) -> bytes:
+        """Packager
+
+        :param content: Content
+        :return: [ md5(JSON(content)) + ';' + JSON(content) ].UTF-8
+        """
+        content = json.dumps(content)
+        content = ';'.join([md5(content.encode('UTF-8')).hexdigest(), content])
+
+        return content.encode('UTF-8')
+
+    @staticmethod
+    def __unpacker(pack: bytes) -> dict:
+        """Unpacker
+
+        :param pack: [ md5(JSON(content)) + ';' + JSON(content) ].UTF-8
+        :return: Content
+        """
+        pack = pack.decode('UTF-8').split(';')
+
+        if len(pack) != 2 or pack[0] != md5(pack[1].encode('UTF-8')).hexdigest():
+            return {}
+
+        return json.loads(pack[1])
 
 
 class User:
@@ -146,27 +163,24 @@ class User:
 
 def server_start_ui():
     """ Starting Interface """
-    utils_s.clear_screen()
-    Pprint(utils_s.ascii_art_title, 'green')
-    Pprint(f'Host name:{socket.gethostname()}\t'
-           f'Host IP:{socket.gethostbyname(socket.gethostname())}\t'
-           f'Pairing by port: {G_PAIRING_PORT}', 'cyan')
+    utils.system.clear_screen()
+    ColoredPrint(utils.art.ascii_art_title_4server, 'green')
+    ColoredPrint(f'Host name:{socket.gethostname()}\t'
+                 f'Host IP:{socket.gethostbyname(socket.gethostname())}\t'
+                 f'Pairing by port: {G_PAIRING_PORT}', 'cyan')
     print()
 
 
-def server_close():
-    """ Shutdown server """
-    Pprint('=' * 32 + 'Server is doing shutdown' + '=' * 32, 'red')
-    new_gay_waiter.close()
-
-
-if __name__ == "__main__":
-    """ Starting point """
+def execute():
+    # Starting point
     server_start_ui()
 
-    """ Server Logic """
+    # Server Logic
     new_gay_waiter = NewUserReceptionist()
     new_gay_waiter.start()
 
     input()  # Purse
-    server_close()
+
+    # Shutdown server
+    ColoredPrint('=' * 32 + 'Server is doing shutdown' + '=' * 32, 'red')
+    new_gay_waiter.close()

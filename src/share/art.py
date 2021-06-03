@@ -1,7 +1,6 @@
-import os
-import re
+__all__ = ('ascii_art_title_4client', 'ascii_art_title_4server')
 
-ascii_art_title = r"""
+ascii_art_title_4client = r"""
                                                                   /$$$$$$  /$$                   /$$    
                                                                  /$$__  $$| $$                  | $$    
   /$$$$$$  /$$$$$$$   /$$$$$$  /$$$$$$$  /$$   /$$ /$$$$$$/$$$$ | $$  \__/| $$$$$$$   /$$$$$$  /$$$$$$  
@@ -15,23 +14,13 @@ ascii_art_title = r"""
                                          \______/                                                                                                      
 """
 
-
-def clear_screen():
-    if 'nt' in os.name:
-        os.system('cls')
-    elif 'posix' in os.name:
-        os.system('clear')
-    else:
-        print(f'Unknown platform: {os.name}')
-        print(f'Please connect with Email: david_ri@163.com')
-
-
-def valid_ip_port(ip_port: str) -> bool:
-    compile_ip = re.compile(
-        r"^(1\d{2}|2[0-4]\d|25[0-5]|[1-9]\d|[1-9])\."
-        r"(1\d{2}|2[0-4]\d|25[0-5]|[1-9]\d|\d)\."
-        r"(1\d{2}|2[0-4]\d|25[0-5]|[1-9]\d|\d)\."
-        r"(1\d{2}|2[0-4]\d|25[0-5]|[1-9]\d|\d):"
-        r"([0-9]|[1-9]\d{1,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])$")
-
-    return True if compile_ip.match(ip_port) else False
+ascii_art_title_4server = r"""
+                                         _____ _           _     _____                          
+                                        /  __ \ |         | |   /  ___|                         
+  __ _ _ __   ___  _ __  _   _ _ __ ___ | /  \/ |__   __ _| |_  \ `--.  ___ _ ____   _____ _ __ 
+ / _` | '_ \ / _ \| '_ \| | | | '_ ` _ \| |   | '_ \ / _` | __|  `--. \/ _ \ '__\ \ / / _ \ '__|
+| (_| | | | | (_) | | | | |_| | | | | | | \__/\ | | | (_| | |_  /\__/ /  __/ |   \ V /  __/ |   
+ \__,_|_| |_|\___/|_| |_|\__, |_| |_| |_|\____/_| |_|\__,_|\__| \____/ \___|_|    \_/ \___|_|   
+                          __/ |                                                                 
+                         |___/
+"""

@@ -5,9 +5,10 @@ import socket
 import json
 from hashlib import md5
 
-import utils_c
-import help_doc
-from pretty_print import PrettyPrint as Pprint
+import utils
+from utils.out import ColoredPrint
+
+from . import help_doc
 
 G_PAIRING_PORT = 10080  # <本机端口> 接收来自服务器的配对广播 & 承载配对流程
 G_MASSAGE_RECV_PORT = 22218  # <本机端口> 用于接收来自服务器的包
@@ -17,8 +18,8 @@ G_SERVER_MASSAGE_ADDR = None  # <服务器地址> 服务器的收包地址
 
 def client_init():
     """ Initialize client """
-    utils_c.clear_screen()
-    Pprint(utils_c.ascii_art_title, 'yellow')
+    utils.system.clear_screen()
+    ColoredPrint(utils.art.ascii_art_title_4client, 'yellow')
 
 
 class ConnServer:
@@ -68,7 +69,7 @@ class ConnServer:
 
         # Connect server -- {
         if self.__conn_server():
-            Pprint(f'^_^ Connect with server({self.__server_ip}) successfully', 'cyan')
+            ColoredPrint(f'^_^ Connect with server({self.__server_ip}) successfully', 'cyan')
             print(self.__meg_from_server)
         else:
             print("Server doesn't response.")
@@ -100,7 +101,7 @@ class ConnServer:
         print('No server detected automatically, please connect the server manually')
         while True:
             addr = input('Enter the server address in IP:Port (like 10.20.71.2:9999):')
-            if utils_c.valid_ip_port(addr):
+            if utils.validator.valid_ip_port(addr):
                 addr = addr.split(':')
                 self.__server_ip = addr[0]
                 self.__server_pairing_port = int(addr[1])
@@ -217,7 +218,7 @@ class Main:
         )
 
         while not self.__exit_flag:
-            Pprint('anonymChat> ', color='green', end='')
+            ColoredPrint('anonymChat> ', color='green', end='')
             self.__input_parser(input())
 
     def __input_parser(self, user_input: str):
@@ -276,7 +277,7 @@ class Main:
             print(help_doc.exit_help_doc)
 
 
-if __name__ == "__main__":
+def execute():
     # 初始化客户端
     client_init()
 
